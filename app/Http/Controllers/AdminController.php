@@ -1,0 +1,681 @@
+<?php
+// app/Http/Controllers/AdminController.php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
+
+class AdminController extends Controller
+{
+    private function logActivity($action, $modelType, $modelId = null, $details = null)
+    {
+        $admin = clone DB::table('admins')->where('id', session('admin_id'))->first();
+        if (!$admin) return;
+
+        DB::table('admin_activity_logs')->insert([
+            'admin_id'   => $admin->id,
+            'admin_name' => $admin->name,
+            'action'     => $action,
+            'model_type' => $modelType,
+            'model_id'   => $modelId,
+            'details'    => $details ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+    private function hasPermission($perm)
+    {
+        $admin = DB::table('admins')->where('id', session('admin_id'))->first();
+        if (!$admin) return false;
+        if ($admin->role === 'super_admin') return true;
+        
+        $perms = json_decode($admin->permissions, true) ?: [];
+        return in_array($perm, $perms);
+    }
+
+    // ===== لوحة التحكم =====
+    public function dashboard()
+    {
+        $stats = [
+            'members'         => DB::table('members')->where('is_active', 1)->count(),
+            'pending_members' => DB::table('members')->where('is_active', 0)->count(),
+            'news'            => DB::table('news')->count(),
+            'activities'      => DB::table('activities')->count(),
+        ];
+        $latestNews = DB::table('news')->orderBy('created_at', 'desc')->limit(5)->get();
+        $latestActs = DB::table('activities')->orderBy('created_at', 'desc')->limit(5)->get();
+
+        return view('admin.dashboard', compact('stats', 'latestNews', 'latestActs'));
+    }
+
+    // ===== الأعضاء =====
+    public function members()
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $members = DB::table('members')->orderBy('sort_order')->get();
+        return view('admin.members.index', compact('members'));
+    }
+
+    public function memberCreate()
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        return view('admin.members.form', ['member' => null]);
+    }
+
+    public function memberStore(Request $request)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $data = $request->validate([
+            'name'       => 'required|string|max:255',
+            'position'   => 'nullable|string|max:255',
+            'profession' => 'nullable|string|max:255',
+            'country'    => 'required|string|max:100',
+            'province'   => 'required|string|max:100',
+            'city'       => 'required|string|max:100',
+            'phone'      => 'nullable|array',
+            'email'      => 'nullable|email|max:255',
+            'bio'        => 'nullable|string',
+            'sort_order' => 'nullable|integer',
+            'photo'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $countryMap = [
+            'اليمن'    => ['code' => '+967', 'len' => 9],
+            'العراق'    => ['code' => '+964', 'len' => 10],
+            'السعودية' => ['code' => '+966', 'len' => 9],
+            'الإمارات' => ['code' => '+971', 'len' => 9],
+            'عمان'     => ['code' => '+968', 'len' => 8],
+            'الكويت'   => ['code' => '+965', 'len' => 8],
+            'قطر'      => ['code' => '+974', 'len' => 8],
+            'البحرين'  => ['code' => '+973', 'len' => 8],
+            'مصر'      => ['code' => '+20',   'len' => 10],
+            'الأردن'    => ['code' => '+962', 'len' => 9],
+        ];
+
+        $config = $countryMap[$data['country']] ?? ['code' => '+', 'len' => '7,15'];
+
+        // Unify location for storage
+        $data['location'] = "{$data['country']} - {$data['province']} - {$data['city']}";
+
+        if (isset($data['phone']) && is_array($data['phone'])) {
+            $formattedPhones = [];
+            foreach ($data['phone'] as $number) {
+                if (empty($number)) continue;
+                $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                
+                if (str_contains($config['len'], ',')) {
+                    $range = explode(',', $config['len']);
+                    if (strlen($cleanNumber) < $range[0] || strlen($cleanNumber) > $range[1]) {
+                        return back()->withErrors(['phone' => "رقم الهاتف غير صحيح (يجب أن يكون بين {$range[0]} و {$range[1]} أرقام)."])->withInput();
+                    }
+                } else {
+                    if (strlen($cleanNumber) != $config['len']) {
+                        return back()->withErrors(['phone' => "رقم الهاتف في {$data['country']} يجب أن يكون {$config['len']} أرقام."])->withInput();
+                    }
+                }
+                $formattedPhones[] = ($config['code'] === '+' ? '+' : $config['code']) . ' ' . $cleanNumber;
+            }
+            $data['phone'] = implode(', ', $formattedPhones);
+        }
+
+        if (empty($data['position'])) $data['position'] = 'member';
+
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $request->file('photo')->store('members', 'public');
+        }
+
+        $data['is_active']  = $request->has('is_active') ? 1 : 0;
+        $data['created_at'] = now();
+        $data['updated_at'] = now();
+
+        $memberId = DB::table('members')->insertGetId($data);
+        $this->logActivity('created', 'member', $memberId, ['name' => $data['name']]);
+        return redirect()->route('admin.members')->with('success', 'Member added successfully');
+    }
+
+    public function memberEdit($id)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $member = DB::table('members')->find($id);
+        return view('admin.members.form', compact('member'));
+    }
+
+    public function memberUpdate(Request $request, $id)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $data = $request->validate([
+            'name'       => 'required|string|max:255',
+            'position'   => 'nullable|string|max:255',
+            'profession' => 'nullable|string|max:255',
+            'country'    => 'required|string|max:100',
+            'province'   => 'required|string|max:100',
+            'city'       => 'required|string|max:100',
+            'phone'      => 'nullable|array',
+            'email'      => 'nullable|email|max:255',
+            'bio'        => 'nullable|string',
+            'sort_order' => 'nullable|integer',
+            'photo'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $countryMap = [
+            'اليمن'    => ['code' => '+967', 'len' => 9],
+            'العراق'    => ['code' => '+964', 'len' => 10],
+            'السعودية' => ['code' => '+966', 'len' => 9],
+            'الإمارات' => ['code' => '+971', 'len' => 9],
+            'عمان'     => ['code' => '+968', 'len' => 8],
+            'الكويت'   => ['code' => '+965', 'len' => 8],
+            'قطر'      => ['code' => '+974', 'len' => 8],
+            'البحرين'  => ['code' => '+973', 'len' => 8],
+            'مصر'      => ['code' => '+20',   'len' => 10],
+            'الأردن'    => ['code' => '+962', 'len' => 9],
+        ];
+
+        $config = $countryMap[$data['country']] ?? ['code' => '+', 'len' => '7,15'];
+
+        // Unify location for storage
+        $data['location'] = "{$data['country']} - {$data['province']} - {$data['city']}";
+
+        if (isset($data['phone']) && is_array($data['phone'])) {
+            $formattedPhones = [];
+            foreach ($data['phone'] as $number) {
+                if (empty($number)) continue;
+                $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                
+                if (str_contains($config['len'], ',')) {
+                    $range = explode(',', $config['len']);
+                    if (strlen($cleanNumber) < $range[0] || strlen($cleanNumber) > $range[1]) {
+                        return back()->withErrors(['phone' => "رقم الهاتف غير صحيح (يجب أن يكون بين {$range[0]} و {$range[1]} أرقام)."])->withInput();
+                    }
+                } else {
+                    if (strlen($cleanNumber) != $config['len']) {
+                        return back()->withErrors(['phone' => "رقم الهاتف في {$data['country']} يجب أن يكون {$config['len']} أرقام."])->withInput();
+                    }
+                }
+                $formattedPhones[] = ($config['code'] === '+' ? '+' : $config['code']) . ' ' . $cleanNumber;
+            }
+            $data['phone'] = implode(', ', $formattedPhones);
+        }
+
+        if ($request->hasFile('photo')) {
+            $old = DB::table('members')->where('id', $id)->value('photo');
+            if ($old) Storage::disk('public')->delete($old);
+            $data['photo'] = $request->file('photo')->store('members', 'public');
+        }
+
+        $data['is_active']  = $request->has('is_active') ? 1 : 0;
+        $data['updated_at'] = now();
+
+        DB::table('members')->where('id', $id)->update($data);
+        $this->logActivity('updated', 'member', $id, ['name' => $data['name']]);
+        return redirect()->route('admin.members')->with('success', 'Member updated successfully');
+    }
+
+    public function memberDelete($id)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $m = DB::table('members')->find($id);
+        if ($m && $m->photo) {
+            Storage::disk('public')->delete($m->photo);
+        }
+        DB::table('members')->where('id', $id)->delete();
+        $this->logActivity('deleted', 'member', $id, ['name' => $m->name ?? 'Unknown']);
+        return redirect()->route('admin.members')->with('success', 'Member deleted successfully');
+    }
+
+    public function memberApprove($id)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        DB::table('members')->where('id', $id)->update(['is_active' => 1]);
+        $this->logActivity('approved', 'member', $id);
+        return back()->with('success', 'تم تفعيل العضوية بنجاح');
+    }
+
+    public function memberApproveBulk(Request $request)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $ids = $request->input('member_ids');
+        if (!empty($ids) && is_array($ids)) {
+            DB::table('members')->whereIn('id', $ids)->update(['is_active' => 1]);
+            $this->logActivity('approved', 'member', null, ['title' => 'تمت الموافقة على مجموعة أعضاء ('.count($ids).')']);
+            return back()->with('success', 'تمت الموافقة على الأعضاء المحددين بنجاح');
+        }
+        return back()->withErrors(['لم يتم تحديد أي عضو للموافقة عليه']);
+    }
+
+    public function memberApproveAll()
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $count = DB::table('members')->where('is_active', 0)->count();
+        if ($count > 0) {
+            DB::table('members')->where('is_active', 0)->update(['is_active' => 1]);
+            $this->logActivity('approved', 'member', null, ['title' => 'تمت الموافقة على جميع الأعضاء المنتظرين ('.$count.')']);
+            return back()->with('success', 'تمت الموافقة على جميع الأعضاء المنتظرين بنجاح');
+        }
+        return back()->with('success', 'لا يوجد أعضاء بانتظار الموافقة');
+    }
+
+    // ===== الأنشطة =====
+    public function activities()
+    {
+        $activities = DB::table('activities')->orderBy('activity_date', 'desc')->get();
+        return view('admin.activities.index', compact('activities'));
+    }
+
+    public function activityCreate()
+    {
+        if (!$this->hasPermission('manage_activities')) abort(403);
+        return view('admin.activities.form', ['activity' => null]);
+    }
+
+    public function activityStore(Request $request)
+    {
+        if (!$this->hasPermission('manage_activities')) abort(403);
+        $data = $request->validate([
+            'title'         => 'required|string|max:255',
+            'description'   => 'required|string',
+            'content'       => 'nullable|string',
+            'activity_date' => 'required|date',
+            'location'      => 'nullable|string|max:255',
+            'images'        => 'nullable|array',
+            'images.*'      => 'image|mimes:jpg,jpeg,png,webp|max:20480',
+        ]);
+
+        // Remove images from data array (handled separately below)
+        unset($data['images']);
+
+        // Handle multiple images
+        $imagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $imagePaths[] = $image->store('activities', 'public');
+            }
+        }
+
+        // Set image field
+        $data['image'] = !empty($imagePaths) ? implode(',', $imagePaths) : null;
+
+        $data['is_published'] = $request->has('is_published') ? 1 : 0;
+        $data['created_at']   = now();
+        $data['updated_at']   = now();
+
+        $actId = DB::table('activities')->insertGetId($data);
+        $this->logActivity('created', 'activity', $actId, ['title' => $data['title']]);
+        return redirect()->route('admin.activities')->with('success', 'تم إضافة النشاط بنجاح');
+    }
+
+    public function activityEdit($id)
+    {
+        if (!$this->hasPermission('manage_activities')) abort(403);
+        $activity = DB::table('activities')->find($id);
+        return view('admin.activities.form', compact('activity'));
+    }
+
+    public function activityUpdate(Request $request, $id)
+    {
+        if (!$this->hasPermission('manage_activities')) abort(403);
+        $data = $request->validate([
+            'title'           => 'required|string|max:255',
+            'description'     => 'required|string',
+            'content'         => 'nullable|string',
+            'activity_date'   => 'required|date',
+            'location'        => 'nullable|string|max:255',
+            'images'          => 'nullable|array',
+            'images.*'        => 'image|mimes:jpg,jpeg,png,webp|max:20480',
+            'existing_images' => 'nullable|array',
+        ]);
+
+        // Get existing images to keep & remove from data before DB update
+        $existingImages = $request->input('existing_images', []);
+        unset($data['images'], $data['existing_images']);
+
+        // Handle new images
+        $newImagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $newImagePaths[] = $image->store('activities', 'public');
+            }
+        }
+
+        // Combine existing and new images
+        $allImages = array_merge($existingImages, $newImagePaths);
+        $data['image'] = !empty($allImages) ? implode(',', $allImages) : null;
+
+        // Delete old images that were removed
+        $oldActivity = DB::table('activities')->find($id);
+        if ($oldActivity && $oldActivity->image) {
+            $oldImages = explode(',', $oldActivity->image);
+            foreach ($oldImages as $oldImage) {
+                if (!in_array(trim($oldImage), $existingImages)) {
+                    Storage::disk('public')->delete(trim($oldImage));
+                }
+            }
+        }
+
+        $data['is_published'] = $request->has('is_published') ? 1 : 0;
+        $data['updated_at']   = now();
+
+        DB::table('activities')->where('id', $id)->update($data);
+        $this->logActivity('updated', 'activity', $id, ['title' => $data['title']]);
+        return redirect()->route('admin.activities')->with('success', 'تم تعديل النشاط بنجاح');
+    }
+
+    public function activityDelete($id)
+    {
+        if (!$this->hasPermission('manage_activities')) abort(403);
+        $act = DB::table('activities')->find($id);
+        if ($act && $act->image) {
+            foreach (explode(',', $act->image) as $img) {
+                Storage::disk('public')->delete(trim($img));
+            }
+        }
+        DB::table('activities')->where('id', $id)->delete();
+        $this->logActivity('deleted', 'activity', $id, ['title' => $act->title ?? 'Unknown']);
+        return redirect()->route('admin.activities')->with('success', 'Activity deleted successfully');
+    }
+
+    // ===== الأخبار =====
+    public function news()
+    {
+        $news = DB::table('news')->orderBy('created_at', 'desc')->get();
+        return view('admin.news.index', compact('news'));
+    }
+
+    public function newsCreate()
+    {
+        if (!$this->hasPermission('manage_news')) abort(403);
+        return view('admin.news.form', ['item' => null]);
+    }
+
+    public function newsStore(Request $request)
+    {
+        if (!$this->hasPermission('manage_news')) abort(403);
+        $data = $request->validate([
+            'title'    => 'required|string|max:255',
+            'excerpt'  => 'required|string',
+            'content'  => 'required|string',
+            'images'   => 'nullable|array',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:20480',
+        ]);
+
+        // Remove images from data array (handled separately below)
+        unset($data['images']);
+
+        // Handle multiple images
+        $imagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $imagePaths[] = $image->store('news', 'public');
+            }
+        }
+
+        // Set image field
+        $data['image'] = !empty($imagePaths) ? implode(',', $imagePaths) : null;
+
+        $data['is_published'] = $request->has('is_published') ? 1 : 0;
+        $data['published_at'] = $data['is_published'] ? now() : null;
+        $data['created_at']   = now();
+        $data['updated_at']   = now();
+
+        $newsId = DB::table('news')->insertGetId($data);
+        $this->logActivity('created', 'news', $newsId, ['title' => $data['title']]);
+        return redirect()->route('admin.news')->with('success', 'تم إضافة الخبر بنجاح');
+    }
+
+    public function newsEdit($id)
+    {
+        if (!$this->hasPermission('manage_news')) abort(403);
+        $item = DB::table('news')->find($id);
+        return view('admin.news.form', compact('item'));
+    }
+
+    public function newsUpdate(Request $request, $id)
+    {
+        if (!$this->hasPermission('manage_news')) abort(403);
+        $data = $request->validate([
+            'title'           => 'required|string|max:255',
+            'excerpt'         => 'required|string',
+            'content'         => 'required|string',
+            'images'          => 'nullable|array',
+            'images.*'        => 'image|mimes:jpg,jpeg,png,webp|max:20480',
+            'existing_images' => 'nullable|array',
+        ]);
+
+        // Get existing images to keep & remove from data before DB update
+        $existingImages = $request->input('existing_images', []);
+        unset($data['images'], $data['existing_images']);
+
+        // Handle new images
+        $newImagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $newImagePaths[] = $image->store('news', 'public');
+            }
+        }
+
+        // Combine existing and new images
+        $allImages = array_merge($existingImages, $newImagePaths);
+        $data['image'] = !empty($allImages) ? implode(',', $allImages) : null;
+
+        // Delete old images that were removed
+        $oldNews = DB::table('news')->find($id);
+        if ($oldNews && $oldNews->image) {
+            $oldImages = explode(',', $oldNews->image);
+            foreach ($oldImages as $oldImage) {
+                if (!in_array(trim($oldImage), $existingImages)) {
+                    Storage::disk('public')->delete(trim($oldImage));
+                }
+            }
+        }
+
+        $data['is_published'] = $request->has('is_published') ? 1 : 0;
+        $data['updated_at']   = now();
+
+        DB::table('news')->where('id', $id)->update($data);
+        $this->logActivity('updated', 'news', $id, ['title' => $data['title']]);
+        return redirect()->route('admin.news')->with('success', 'تم تعديل الخبر بنجاح');
+    }
+
+    public function newsDelete($id)
+    {
+        if (!$this->hasPermission('manage_news')) abort(403);
+        $news = DB::table('news')->find($id);
+        if ($news && $news->image) {
+            foreach (explode(',', $news->image) as $img) {
+                Storage::disk('public')->delete(trim($img));
+            }
+        }
+        DB::table('news')->where('id', $id)->delete();
+        $this->logActivity('deleted', 'news', $id, ['title' => $news->title ?? 'Unknown']);
+        return redirect()->route('admin.news')->with('success', 'News deleted successfully');
+    }
+
+    // ===== الإعدادات =====
+    public function settings()
+    {
+        $settings = DB::table('tribe_settings')->first();
+        return view('admin.settings', compact('settings'));
+    }
+
+    public function settingsUpdate(Request $request)
+    {
+        $data = $request->validate([
+            'tribe_name'        => 'required|string|max:255',
+            'tribe_description' => 'nullable|string',
+            'founded_date'      => 'nullable|date',
+            'location'           => 'nullable|string|max:255',
+            'contact_email'     => 'nullable|email|max:255',
+            'contact_phone'     => 'nullable|string|max:255',
+            'logo'              => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
+            'cover_image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        $settings = DB::table('tribe_settings')->first();
+
+        if ($request->hasFile('logo')) {
+            if ($settings && $settings->logo) Storage::disk('public')->delete($settings->logo);
+            $data['logo'] = $request->file('logo')->store('settings', 'public');
+        }
+        if ($request->hasFile('cover_image')) {
+            if ($settings && $settings->cover_image) Storage::disk('public')->delete($settings->cover_image);
+            $data['cover_image'] = $request->file('cover_image')->store('settings', 'public');
+        }
+
+        if ($settings) {
+            DB::table('tribe_settings')->where('id', $settings->id)->update($data);
+        } else {
+            DB::table('tribe_settings')->insert($data);
+        }
+
+        return redirect()->route('admin.settings')->with('success', 'تم تحديث الإعدادات بنجاح');
+    }
+
+    public function passwordEdit()
+    {
+        return view('admin.password');
+    }
+
+    public function passwordUpdate(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password'         => 'required|confirmed|min:8',
+        ]);
+
+        $admin = DB::table('admins')->where('id', session('admin_id'))->first();
+
+        if (!$admin || !\Illuminate\Support\Facades\Hash::check($request->current_password, $admin->password)) {
+            return back()->withErrors(['current_password' => 'كلمة المرور الحالية غير صحيحة']);
+        }
+
+        DB::table('admins')->where('id', $admin->id)->update([
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password)
+        ]);
+
+        return redirect()->route('admin.settings')->with('success', 'تم تغيير كلمة المرور بنجاح');
+    }
+
+    // ===== إدارة المستخدمين (المدراء) =====
+
+    private function isSuperAdmin()
+    {
+        $admin = DB::table('admins')->where('id', session('admin_id'))->first();
+        return $admin && $admin->role === 'super_admin';
+    }
+
+    public function users()
+    {
+        if (!$this->isSuperAdmin()) abort(403, 'غير مصرح لك بدخول هذه الصفحة');
+        $users = DB::table('admins')->get();
+        return view('admin.users.index', compact('users'));
+    }
+
+    public function userCreate()
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+        $user = null;
+        return view('admin.users.form', compact('user'));
+    }
+
+    public function userStore(Request $request)
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+        $data = $request->validate([
+            'name'        => 'required|string|max:255',
+            'email'       => 'required|email|unique:admins,email',
+            'password'    => 'required|string|min:6',
+            'permissions' => 'nullable|array'
+        ]);
+
+        DB::table('admins')->insert([
+            'name'       => $data['name'],
+            'email'      => $data['email'],
+            'password'   => \Illuminate\Support\Facades\Hash::make($data['password']),
+            'role'       => 'sub_admin',
+            'permissions'=> json_encode($data['permissions'] ?? []),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('admin.users')->with('success', 'تمت إضافة المستخدم بنجاح');
+    }
+
+    public function userEdit($id)
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+        $user = DB::table('admins')->where('id', $id)->first();
+        if (!$user) return redirect()->route('admin.users')->with('error', 'المستخدم غير موجود');
+        
+        $user->permissions = json_decode($user->permissions, true) ?? [];
+        return view('admin.users.form', compact('user'));
+    }
+
+    public function userUpdate(Request $request, $id)
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+        
+        $user = DB::table('admins')->where('id', $id)->first();
+        if (!$user) return redirect()->route('admin.users')->with('error', 'المستخدم غير موجود');
+        
+        if ($user->role === 'super_admin' && $id != session('admin_id')) {
+            return back()->with('error', 'لا يمكن التعديل على الصلاحيات الخاصة بالمدير العام');
+        }
+
+        $data = $request->validate([
+            'name'        => 'required|string|max:255',
+            'email'       => "required|email|unique:admins,email,{$id}",
+            'password'    => 'nullable|string|min:6',
+            'permissions' => 'nullable|array'
+        ]);
+
+        $updateData = [
+            'name'       => $data['name'],
+            'email'      => $data['email'],
+            'updated_at' => now(),
+        ];
+
+        if ($user->role !== 'super_admin') {
+            $updateData['permissions'] = json_encode($data['permissions'] ?? []);
+        }
+
+        if (!empty($data['password'])) {
+            $updateData['password'] = \Illuminate\Support\Facades\Hash::make($data['password']);
+        }
+
+        DB::table('admins')->where('id', $id)->update($updateData);
+
+        return redirect()->route('admin.users')->with('success', 'تم تحديث بيانات المستخدم بنجاح');
+    }
+
+    public function userDelete($id)
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+        
+        $user = DB::table('admins')->where('id', $id)->first();
+        if (!$user) return back()->with('error', 'المستخدم غير موجود');
+        
+        if ($user->role === 'super_admin') {
+            return back()->with('error', 'لا يمكن حذف المدير العام للنظام!');
+        }
+
+        DB::table('admins')->where('id', $id)->delete();
+        return back()->with('success', 'تم حذف المستخدم بنجاح');
+    }
+
+    // ===== سجل النشاطات =====
+    public function activityLogs()
+    {
+        if (!$this->hasPermission('super_admin')) abort(403);
+        $logs = DB::table('admin_activity_logs')->orderBy('created_at', 'desc')->paginate(20);
+        return view('admin.activity_logs', compact('logs'));
+    }
+
+    public function clearActivityLogs()
+    {
+        if (!$this->hasPermission('super_admin')) abort(403);
+        DB::table('admin_activity_logs')->truncate();
+        return redirect()->route('admin.logs')->with('success', 'تم حذف السجل بالكامل بنجاح');
+    }
+}
