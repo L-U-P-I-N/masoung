@@ -46,24 +46,22 @@ class AuthController extends Controller
                 'last_session_id' => $sessionId,
             ]);
 
-            // إرسال تنبيه بالبريد الإلكتروني في الخلفية (فقط إذا لم يكن المحرك sync لتجنب التعليق)
+            // إرسال تنبيه بالبريد الإلكتروني في الخلفية
             $settings = DB::table('tribe_settings')->first();
             $notifyEmail = $settings->contact_email ?? 'skjccm@gmail.com';
             
-            if (config('queue.default') !== 'sync' || app()->environment('local')) {
-                \App\Jobs\SendEmailJob::dispatch(
-                    'emails.login_alert',
-                    [
-                        'tribe_name'  => $settings->tribe_name ?? 'القبيلة',
-                        'admin_name'  => $admin->name,
-                        'admin_email' => $admin->email,
-                        'ip_address'  => $request->ip(),
-                        'timestamp'   => now()->format('Y-m-d H:i:s'),
-                    ],
-                    $notifyEmail,
-                    'تنبيه أمان: تسجيل دخول جديد للوحة الإدارة'
-                );
-            }
+            \App\Jobs\SendEmailJob::dispatch(
+                'emails.login_alert',
+                [
+                    'tribe_name'  => $settings->tribe_name ?? 'القبيلة',
+                    'admin_name'  => $admin->name,
+                    'admin_email' => $admin->email,
+                    'ip_address'  => $request->ip(),
+                    'timestamp'   => now()->format('Y-m-d H:i:s'),
+                ],
+                $notifyEmail,
+                'تنبيه أمان: تسجيل دخول جديد للوحة الإدارة'
+            );
 
             return redirect()->route('admin.dashboard')->with('success', 'مرحباً بك ' . $admin->name);
         }
