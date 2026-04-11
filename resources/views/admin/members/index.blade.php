@@ -36,7 +36,7 @@
             <a href="{{ route('admin.members.create') }}" class="btn btn-primary">إضافة أول عضو</a>
         </div>
     @else
-    <div style="overflow-x:auto">
+    <div class="table-responsive">
     <form id="bulkApproveForm" action="{{ route('admin.members.approve.bulk') }}" method="POST" onsubmit="return confirm('هل أنت متأكد من الموافقة على الأعضاء المحددين؟')">
         @csrf @method('PATCH')
     <table>
@@ -49,7 +49,6 @@
                 <th>المنصب</th>
                 <th>المهنة</th>
                 <th>رقم الهاتف</th>
-                <th>الموقع</th>
                 <th>الحالة</th>
                 <th>الإجراءات</th>
             </tr>
@@ -78,7 +77,6 @@
                 <td style="color:var(--text-muted)">{{ $m->position ?? 'member' }}</td>
                 <td style="color:var(--text-muted)">{{ $m->profession ?? '---' }}</td>
                 <td style="direction:ltr;font-size:0.85rem">{{ $m->phone ?? '---' }}</td>
-                <td style="color:var(--text-muted)">{{ $m->location ?? '---' }}</td>
                 <td>
                     <span class="badge {{ $m->is_active ? 'badge-green' : 'badge-yellow' }}">
                         {{ $m->is_active ? 'نشط' : 'بانتظار الموافقة' }}
@@ -99,7 +97,7 @@
                         </a>
                         <form action="{{ route('admin.members.delete', $m->id) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من الحذف؟')">
                             @csrf @method('DELETE')
-                            <button type="submit" class="btn btn-delete">
+                            <button type="submit" class="btn btn-del">
                                 <i class="fas fa-trash"></i> حذف
                             </button>
                         </form>

@@ -68,7 +68,7 @@
 </div>
 
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+<div class="stat-grid" style="margin-bottom: 1.5rem;">
 
     {{-- آخر الأخبار --}}
     <div class="table-wrap">
@@ -79,22 +79,24 @@
         @if($latestNews->isEmpty())
         <div class="empty"><i class="fas fa-newspaper"></i>لا توجد أخبار</div>
         @else
-        <table>
-            <thead><tr><th>العنوان</th><th>الحالة</th><th>التاريخ</th></tr></thead>
-            <tbody>
-                @foreach($latestNews as $n)
-                <tr>
-                    <td>{{ Str::limit($n->title, 35) }}</td>
-                    <td>
-                        <span class="badge {{ $n->is_published ? 'badge-green' : 'badge-gray' }}">
-                            {{ $n->is_published ? 'منشور' : 'مسودة' }}
-                        </span>
-                    </td>
-                    <td style="color:var(--text-muted);font-size:0.8rem">{{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y') }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>العنوان</th><th>الحالة</th><th>التاريخ</th></tr></thead>
+                <tbody>
+                    @foreach($latestNews as $n)
+                    <tr>
+                        <td>{{ Str::limit($n->title, 35) }}</td>
+                        <td>
+                            <span class="badge {{ $n->is_published ? 'badge-green' : 'badge-gray' }}">
+                                {{ $n->is_published ? 'منشور' : 'مسودة' }}
+                            </span>
+                        </td>
+                        <td style="color:var(--text-muted);font-size:0.8rem">{{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y') }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
         @endif
     </div>
 
@@ -107,22 +109,24 @@
         @if($latestActs->isEmpty())
         <div class="empty"><i class="fas fa-calendar-alt"></i>لا توجد أنشطة</div>
         @else
-        <table>
-            <thead><tr><th>النشاط</th><th>التاريخ</th><th>الحالة</th></tr></thead>
-            <tbody>
-                @foreach($latestActs as $a)
-                <tr>
-                    <td>{{ Str::limit($a->title, 30) }}</td>
-                    <td style="color:var(--text-muted);font-size:0.8rem;direction:ltr">{{ \Carbon\Carbon::parse($a->activity_date)->format('d/m/Y') }}</td>
-                    <td>
-                        <span class="badge {{ $a->is_published ? 'badge-green' : 'badge-gray' }}">
-                            {{ $a->is_published ? 'منشور' : 'مسودة' }}
-                        </span>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table>
+                <thead><tr><th>النشاط</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+                <tbody>
+                    @foreach($latestActs as $a)
+                    <tr>
+                        <td>{{ Str::limit($a->title, 30) }}</td>
+                        <td style="color:var(--text-muted);font-size:0.8rem;direction:ltr">{{ \Carbon\Carbon::parse($a->activity_date)->format('d/m/Y') }}</td>
+                        <td>
+                            <span class="badge {{ $a->is_published ? 'badge-green' : 'badge-gray' }}">
+                                {{ $a->is_published ? 'منشور' : 'مسودة' }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
         @endif
     </div>
 
