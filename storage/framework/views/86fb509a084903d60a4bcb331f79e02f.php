@@ -229,20 +229,6 @@
 <?php $__env->stopPush(); ?>
 
 
-<section class="section" style="background: linear-gradient(rgba(13,17,23,0.95), rgba(13,17,23,0.95)), url('https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'); background-size: cover; background-position: center; border-radius: 30px; margin: 4rem 2rem; padding: 5rem 2rem; text-align: center;">
-    <div>
-        <span class="section-label" style="color:var(--gold)">كن جزءاً منا</span>
-        <h2 class="section-title" style="color:white; margin-bottom:1.5rem">انضم إلى مجتمع القبيلة الرقمي</h2>
-        <p style="color:var(--text-muted); max-width:600px; margin: 0 auto 2.5rem; font-size:1.1rem; line-height:1.8">
-            ساعدنا في بناء قاعدة بيانات شاملة لأبناء القبيلة. سجل بياناتك، منصبك، ومهنتك لتسهيل التواصل والتعاون بين الجميع.
-        </p>
-        <a href="<?php echo e(route('member.register')); ?>" class="banner-btn" style="padding: 1rem 3rem; font-size:1.1rem; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color:var(--dark); border:none; text-decoration:none; display:inline-flex; align-items:center; gap:0.5rem">
-            <span>سجل عضويتك الآن</span>
-            <i class="fas fa-edit"></i>
-        </a>
-    </div>
-</section>
-
 <?php $__env->stopSection(); ?>
 
 <?php echo $__env->make('layouts.public', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH E:\PHP\masoung-laravel\masoung\resources\views/public/home.blade.php ENDPATH**/ ?>
