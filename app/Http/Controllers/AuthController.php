@@ -106,7 +106,7 @@ class AuthController extends Controller
         // إرسال رمز التحقق مباشرة عبر SMTP (بدون queue حتى يصل فوراً)
         try {
             $recipientEmail = $request->email;
-            Mail::send('emails.reset_code', ['code' => $code], function ($message) use ($recipientEmail) {
+            Mail::mailer('resend')->send('emails.reset_code', ['code' => $code], function ($message) use ($recipientEmail) {
                 $message->to($recipientEmail)
                         ->subject('رمز إعادة تعيين كلمة المرور - قبيلة مسونق');
             });
