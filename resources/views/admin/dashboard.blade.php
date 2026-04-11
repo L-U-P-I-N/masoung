@@ -153,11 +153,12 @@
     }
 
     .section-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
+        background: var(--dark2);
+        border: 1px solid var(--border);
         border-radius: 1.25rem;
         padding: 1.5rem;
         height: 100%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
     .section-header {
@@ -267,8 +268,8 @@
 
         {{-- Activities --}}
         <div class="p-stat-card">
-            <div class="p-stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #4ade80;">
-                <i class="fas fa-calendar-star"></i>
+            <div class="p-stat-icon" style="background: rgba(34, 197, 94, 0.18); color: #22c55e;">
+                <i class="fas fa-calendar-check"></i>
             </div>
             <div class="p-stat-info">
                 <div class="p-stat-value">{{ number_format($stats['activities']) }}</div>

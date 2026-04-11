@@ -45,8 +45,8 @@ class AdminController extends Controller
             'news'            => DB::table('news')->count(),
             'activities'      => DB::table('activities')->count(),
         ];
-        $latestNews = DB::table('news')->orderBy('created_at', 'desc')->limit(5)->get();
-        $latestActs = DB::table('activities')->orderBy('created_at', 'desc')->limit(5)->get();
+        $latestNews = DB::table('news')->orderBy('created_at', 'desc')->limit(4)->get();
+        $latestActs = DB::table('activities')->orderBy('created_at', 'desc')->limit(4)->get();
 
         return view('admin.dashboard', compact('stats', 'latestNews', 'latestActs'));
     }
