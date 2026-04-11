@@ -38,57 +38,37 @@ class MemberRegistrationController extends Controller
             return back()->withErrors(['name' => 'هذا الاسم مسجل مسبقاً في قاعدة البيانات.'])->withInput();
         }
 
-        // Country config for validation and prefixing
-        $countryMap = [
-            'اليمن'    => ['code' => '+967', 'len' => 9],
-            'العراق'    => ['code' => '+964', 'len' => 10],
-            'السعودية' => ['code' => '+966', 'len' => 9],
-            'الإمارات' => ['code' => '+971', 'len' => 9],
-            'عمان'     => ['code' => '+968', 'len' => 8],
-            'الكويت'   => ['code' => '+965', 'len' => 8],
-            'قطر'      => ['code' => '+974', 'len' => 8],
-            'البحرين'  => ['code' => '+973', 'len' => 8],
-            'مصر'      => ['code' => '+20',   'len' => 10],
-            'الأردن'    => ['code' => '+962', 'len' => 9],
-        ];
-
-        $config = $countryMap[$data['country']] ?? ['code' => '+', 'len' => '7,15'];
-
-        // Unify location for storage
-        $data['location'] = "{$data['country']} - {$data['province']} - {$data['city']}";
-
         // Phone processing and validation
         if (isset($data['phone']) && is_array($data['phone'])) {
             $formattedPhones = [];
             foreach ($data['phone'] as $number) {
                 if (empty($number)) continue;
-                $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                $number = trim($number);
                 
-                // Flexible vs Strict length validation
-                if (str_contains($config['len'], ',')) {
-                    $range = explode(',', $config['len']);
-                    if (strlen($cleanNumber) < $range[0] || strlen($cleanNumber) > $range[1]) {
-                        return back()->withErrors(['phone' => "رقم الهاتف غير صحيح (يجب أن يكون بين {$range[0]} و {$range[1]} أرقام)."])->withInput();
-                    }
+                if (str_starts_with($number, '+')) {
+                    $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                    $fullNumber = $number;
+                } elseif (str_starts_with($number, '00')) {
+                    $cleanNumber = preg_replace('/[^0-9]/', '', substr($number, 2));
+                    $fullNumber = '+' . $cleanNumber;
                 } else {
-                    if (strlen($cleanNumber) != $config['len']) {
-                        return back()->withErrors(['phone' => "رقم الهاتف في {$data['country']} يجب أن يكون {$config['len']} أرقام."])->withInput();
-                    }
+                    $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                    $fullNumber = '+967 ' . $cleanNumber;
                 }
 
-                // 3. Duplicate Phone Check
+                // Duplicate Phone Check (using clean number)
                 $existsPhone = DB::table('members')->where('phone', 'LIKE', '%' . $cleanNumber . '%')->exists();
                 if ($existsPhone) {
                     return back()->withErrors(['phone' => "رقم الهاتف ($number) مسجل مسبقاً لعضو آخر."])->withInput();
                 }
 
-                $formattedPhones[] = ($config['code'] === '+' ? '+' : $config['code']) . ' ' . $cleanNumber;
+                $formattedPhones[] = $fullNumber;
             }
             $data['phone'] = implode(', ', $formattedPhones);
         }
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('members', 'public');
+            $data['photo'] = $request->file('photo')->store('members', 's3');
         }
 
         // Members registered through the public form are INACTIVE by default (Pending Approval)

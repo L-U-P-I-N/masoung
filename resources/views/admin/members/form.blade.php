@@ -33,11 +33,7 @@
                 @error('profession')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
-            <div class="form-group">
-                <label class="lbl">Location <span style="color:var(--gray);font-size:0.85rem">(City/Area)</span></label>
-                <input type="text" name="location" value="{{ old('location', $member->location ?? '') }}" placeholder="e.g., Riyadh, Jeddah, Eastern Province...">
-                @error('location')<p class="field-error">{{ $message }}</p>@enderror
-            </div>
+            {{-- Location field removed as it's redundant with Country/Province/City --}}
 
             <div class="form-group">
                 <label class="lbl">المنصب / الدور <span style="color:var(--gray);font-size:0.85rem">(Tribal Role)</span></label>
@@ -73,14 +69,8 @@
                     if (empty($rawPhones)) $rawPhones = [''];
                 @endphp
                 @foreach($rawPhones as $p)
-                    @php
-                        $parts = explode(' ', $p, 2);
-                        $num = (count($parts) > 1) ? $parts[1] : $parts[0];
-                        $storedCode = (count($parts) > 1) ? $parts[0] : '+967';
-                    @endphp
                 <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-                    <div class="active-code-display" style="display:none;">{{ $storedCode }}</div>
-                    <input type="tel" name="phone[]" class="phone-input" value="{{ $num }}" placeholder="7XXXXXXXX" style="direction:ltr; flex:1" required>
+                    <input type="tel" name="phone[]" class="phone-input" value="{{ $p }}" placeholder="+967 7XXXXXXXX" style="direction:ltr; flex:1" required>
                     @if(!$loop->first)
                     <button type="button" class="btn" style="background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:0 0.8rem;" onclick="this.parentElement.remove()">×</button>
                     @endif
@@ -137,47 +127,19 @@
 
 @push('scripts')
 <script>
-function updatePhoneValidation() {
-    const select = document.getElementById('country-select');
-    const option = select.options[select.selectedIndex];
-    const code = option.getAttribute('data-code');
-    const len = option.getAttribute('data-len');
-    
-    // Update all code displays
-    document.querySelectorAll('.active-code-display').forEach(div => {
-        div.textContent = code;
-    });
-    document.getElementById('phone-hint').textContent = `(${len} أرقام)`;
-    
-    // Update all phone inputs
-    const phones = document.querySelectorAll('input[name="phone[]"]');
-    phones.forEach(input => {
-        input.pattern = `[0-9]{${len}}`;
-        input.placeholder = "X".repeat(len);
-        input.title = `يرجى إدخال ${len} أرقام`;
-    });
-}
-
 function addPhoneField() {
-    const input = document.getElementById('country-input');
-    const val = input.value.trim();
-    const config = countryData[val] || { code: '+', len: '7,15' };
-    
     const container = document.getElementById('phone-container');
     const div = document.createElement('div');
     div.style.display = 'flex'; div.style.gap = '0.5rem'; div.style.marginBottom = '0.5rem';
-    const pattern = config.len === '7,15' ? '[0-9]{7,15}' : `[0-9]{${config.len}}`;
-    const placeholder = config.len === '7,15' ? 'رقم الهاتف' : 'X'.repeat(config.len);
     
     div.innerHTML = `
-        <div class="active-code-display" style="display:none;">${config.code}</div>
-        <input type="tel" name="phone[]" class="phone-input" placeholder="${placeholder}" style="direction:ltr; flex:1" required pattern="${pattern}">
+        <input type="tel" name="phone[]" class="phone-input" placeholder="+967 7XXXXXXXX" style="direction:ltr; flex:1" required>
         <button type="button" class="btn" style="background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:0 0.8rem;" onclick="this.parentElement.remove()">×</button>
     `;
     container.appendChild(div);
 }
 
-// Init
-document.addEventListener('DOMContentLoaded', updatePhoneValidation);
+// Remove old validation logic
+function updatePhoneValidation() {}
 </script>
 @endpush

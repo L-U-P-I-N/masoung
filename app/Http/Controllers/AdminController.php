@@ -82,41 +82,21 @@ class AdminController extends Controller
             'photo'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $countryMap = [
-            'اليمن'    => ['code' => '+967', 'len' => 9],
-            'العراق'    => ['code' => '+964', 'len' => 10],
-            'السعودية' => ['code' => '+966', 'len' => 9],
-            'الإمارات' => ['code' => '+971', 'len' => 9],
-            'عمان'     => ['code' => '+968', 'len' => 8],
-            'الكويت'   => ['code' => '+965', 'len' => 8],
-            'قطر'      => ['code' => '+974', 'len' => 8],
-            'البحرين'  => ['code' => '+973', 'len' => 8],
-            'مصر'      => ['code' => '+20',   'len' => 10],
-            'الأردن'    => ['code' => '+962', 'len' => 9],
-        ];
-
-        $config = $countryMap[$data['country']] ?? ['code' => '+', 'len' => '7,15'];
-
-        // Unify location for storage
-        $data['location'] = "{$data['country']} - {$data['province']} - {$data['city']}";
-
+        // Phone processing
         if (isset($data['phone']) && is_array($data['phone'])) {
             $formattedPhones = [];
             foreach ($data['phone'] as $number) {
                 if (empty($number)) continue;
-                $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                $number = trim($number);
                 
-                if (str_contains($config['len'], ',')) {
-                    $range = explode(',', $config['len']);
-                    if (strlen($cleanNumber) < $range[0] || strlen($cleanNumber) > $range[1]) {
-                        return back()->withErrors(['phone' => "رقم الهاتف غير صحيح (يجب أن يكون بين {$range[0]} و {$range[1]} أرقام)."])->withInput();
-                    }
+                if (str_starts_with($number, '+')) {
+                    $formattedPhones[] = $number;
+                } elseif (str_starts_with($number, '00')) {
+                    $formattedPhones[] = '+' . substr($number, 2);
                 } else {
-                    if (strlen($cleanNumber) != $config['len']) {
-                        return back()->withErrors(['phone' => "رقم الهاتف في {$data['country']} يجب أن يكون {$config['len']} أرقام."])->withInput();
-                    }
+                    $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                    $formattedPhones[] = '+967 ' . $cleanNumber;
                 }
-                $formattedPhones[] = ($config['code'] === '+' ? '+' : $config['code']) . ' ' . $cleanNumber;
             }
             $data['phone'] = implode(', ', $formattedPhones);
         }
@@ -124,7 +104,7 @@ class AdminController extends Controller
         if (empty($data['position'])) $data['position'] = 'member';
 
         if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('members', 'public');
+            $data['photo'] = $request->file('photo')->store('members', 's3');
         }
 
         $data['is_active']  = $request->has('is_active') ? 1 : 0;
@@ -160,49 +140,28 @@ class AdminController extends Controller
             'photo'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $countryMap = [
-            'اليمن'    => ['code' => '+967', 'len' => 9],
-            'العراق'    => ['code' => '+964', 'len' => 10],
-            'السعودية' => ['code' => '+966', 'len' => 9],
-            'الإمارات' => ['code' => '+971', 'len' => 9],
-            'عمان'     => ['code' => '+968', 'len' => 8],
-            'الكويت'   => ['code' => '+965', 'len' => 8],
-            'قطر'      => ['code' => '+974', 'len' => 8],
-            'البحرين'  => ['code' => '+973', 'len' => 8],
-            'مصر'      => ['code' => '+20',   'len' => 10],
-            'الأردن'    => ['code' => '+962', 'len' => 9],
-        ];
-
-        $config = $countryMap[$data['country']] ?? ['code' => '+', 'len' => '7,15'];
-
-        // Unify location for storage
-        $data['location'] = "{$data['country']} - {$data['province']} - {$data['city']}";
-
+        // Phone processing
         if (isset($data['phone']) && is_array($data['phone'])) {
             $formattedPhones = [];
             foreach ($data['phone'] as $number) {
                 if (empty($number)) continue;
-                $cleanNumber = preg_replace('/[^0-9]/', '', $number);
-                
-                if (str_contains($config['len'], ',')) {
-                    $range = explode(',', $config['len']);
-                    if (strlen($cleanNumber) < $range[0] || strlen($cleanNumber) > $range[1]) {
-                        return back()->withErrors(['phone' => "رقم الهاتف غير صحيح (يجب أن يكون بين {$range[0]} و {$range[1]} أرقام)."])->withInput();
-                    }
+                $number = trim($number);
+                if (str_starts_with($number, '+')) {
+                    $formattedPhones[] = $number;
+                } elseif (str_starts_with($number, '00')) {
+                    $formattedPhones[] = '+' . substr($number, 2);
                 } else {
-                    if (strlen($cleanNumber) != $config['len']) {
-                        return back()->withErrors(['phone' => "رقم الهاتف في {$data['country']} يجب أن يكون {$config['len']} أرقام."])->withInput();
-                    }
+                    $cleanNumber = preg_replace('/[^0-9]/', '', $number);
+                    $formattedPhones[] = '+967 ' . $cleanNumber;
                 }
-                $formattedPhones[] = ($config['code'] === '+' ? '+' : $config['code']) . ' ' . $cleanNumber;
             }
             $data['phone'] = implode(', ', $formattedPhones);
         }
 
         if ($request->hasFile('photo')) {
             $old = DB::table('members')->where('id', $id)->value('photo');
-            if ($old) Storage::disk('public')->delete($old);
-            $data['photo'] = $request->file('photo')->store('members', 'public');
+            if ($old) { try { Storage::disk('s3')->delete($old); } catch (\Exception $e) {} }
+            $data['photo'] = $request->file('photo')->store('members', 's3');
         }
 
         $data['is_active']  = $request->has('is_active') ? 1 : 0;
@@ -218,7 +177,7 @@ class AdminController extends Controller
         if (!$this->hasPermission('manage_members')) abort(403);
         $m = DB::table('members')->find($id);
         if ($m && $m->photo) {
-            Storage::disk('public')->delete($m->photo);
+            try { Storage::disk('s3')->delete($m->photo); } catch (\Exception $e) {}
         }
         DB::table('members')->where('id', $id)->delete();
         $this->logActivity('deleted', 'member', $id, ['name' => $m->name ?? 'Unknown']);
@@ -290,7 +249,7 @@ class AdminController extends Controller
         $imagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $imagePaths[] = $image->store('activities', 'public');
+                $imagePaths[] = $image->store('activities', 's3');
             }
         }
 
@@ -335,7 +294,7 @@ class AdminController extends Controller
         $newImagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $newImagePaths[] = $image->store('activities', 'public');
+                $newImagePaths[] = $image->store('activities', 's3');
             }
         }
 
@@ -349,7 +308,7 @@ class AdminController extends Controller
             $oldImages = explode(',', $oldActivity->image);
             foreach ($oldImages as $oldImage) {
                 if (!in_array(trim($oldImage), $existingImages)) {
-                    Storage::disk('public')->delete(trim($oldImage));
+                    try { Storage::disk('s3')->delete(trim($oldImage)); } catch (\Exception $e) {}
                 }
             }
         }
@@ -368,7 +327,7 @@ class AdminController extends Controller
         $act = DB::table('activities')->find($id);
         if ($act && $act->image) {
             foreach (explode(',', $act->image) as $img) {
-                Storage::disk('public')->delete(trim($img));
+                try { Storage::disk('s3')->delete(trim($img)); } catch (\Exception $e) {}
             }
         }
         DB::table('activities')->where('id', $id)->delete();
@@ -407,7 +366,7 @@ class AdminController extends Controller
         $imagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $imagePaths[] = $image->store('news', 'public');
+                $imagePaths[] = $image->store('news', 's3');
             }
         }
 
@@ -451,7 +410,7 @@ class AdminController extends Controller
         $newImagePaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $newImagePaths[] = $image->store('news', 'public');
+                $newImagePaths[] = $image->store('news', 's3');
             }
         }
 
@@ -465,7 +424,7 @@ class AdminController extends Controller
             $oldImages = explode(',', $oldNews->image);
             foreach ($oldImages as $oldImage) {
                 if (!in_array(trim($oldImage), $existingImages)) {
-                    Storage::disk('public')->delete(trim($oldImage));
+                    try { Storage::disk('s3')->delete(trim($oldImage)); } catch (\Exception $e) {}
                 }
             }
         }
@@ -484,7 +443,7 @@ class AdminController extends Controller
         $news = DB::table('news')->find($id);
         if ($news && $news->image) {
             foreach (explode(',', $news->image) as $img) {
-                Storage::disk('public')->delete(trim($img));
+                try { Storage::disk('s3')->delete(trim($img)); } catch (\Exception $e) {}
             }
         }
         DB::table('news')->where('id', $id)->delete();
@@ -515,12 +474,12 @@ class AdminController extends Controller
         $settings = DB::table('tribe_settings')->first();
 
         if ($request->hasFile('logo')) {
-            if ($settings && $settings->logo) Storage::disk('public')->delete($settings->logo);
-            $data['logo'] = $request->file('logo')->store('settings', 'public');
+            if ($settings && $settings->logo) { try { Storage::disk('s3')->delete($settings->logo); } catch (\Exception $e) {} }
+            $data['logo'] = $request->file('logo')->store('settings', 's3');
         }
         if ($request->hasFile('cover_image')) {
-            if ($settings && $settings->cover_image) Storage::disk('public')->delete($settings->cover_image);
-            $data['cover_image'] = $request->file('cover_image')->store('settings', 'public');
+            if ($settings && $settings->cover_image) { try { Storage::disk('s3')->delete($settings->cover_image); } catch (\Exception $e) {} }
+            $data['cover_image'] = $request->file('cover_image')->store('settings', 's3');
         }
 
         if ($settings) {

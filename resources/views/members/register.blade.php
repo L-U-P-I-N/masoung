@@ -66,10 +66,9 @@
             </div>
 
             <div class="form-group" id="phone-container">
-                <label>رقم الهاتف <span id="phone-hint" style="color:var(--text-muted); font-size: 0.75rem;">(أدخل الرقم المحلي)</span></label>
+                <label>رقم الهاتف <span id="phone-hint" style="color:var(--text-muted); font-size: 0.75rem;">(يفضل مع مفتاح الدولة)</span></label>
                 <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-                    <div id="active-code" style="display:none;">+967</div>
-                    <input type="text" name="phone[]" class="phone-input" placeholder="7XXXXXXXX" style="flex:1" required>
+                    <input type="text" name="phone[]" class="phone-input" placeholder="+967 7XXXXXXXX" style="flex:1" required>
                     <button type="button" class="btn" style="background:var(--dark3); color:var(--gold); border:1px solid var(--border); border-radius:10px; padding:0 1rem;" onclick="addPhoneField()">+</button>
                 </div>
             </div>
@@ -180,42 +179,23 @@
     let activeLen = 9;
 
     function updatePhoneValidation() {
-        const input = document.getElementById('country-input');
-        const val = input.value.trim();
-        const config = countryData[val] || { code: '+', len: '7,15' };
-        
-        activePrefix = config.code;
-        activeLen = config.len;
-        
-        document.getElementById('active-code').textContent = activePrefix;
-        document.getElementById('phone-hint').textContent = config.len === '7,15' ? '(رقم الهاتف الدولي)' : `(يجب أن يكون الرقم ${activeLen} خانات)`;
-        
-        const phones = document.querySelectorAll('.phone-input');
-        phones.forEach(p => {
-            const pattern = activeLen === '7,15' ? '[0-9]{7,15}' : `[0-9]{${activeLen}}`;
-            p.pattern = pattern;
-            p.placeholder = activeLen === '7,15' ? 'رقم الهاتف' : 'X'.repeat(activeLen);
-        });
+        // Validation removed to allow free entry of international numbers
     }
 
     function addPhoneField() {
         const container = document.getElementById('phone-container');
         const div = document.createElement('div');
         div.style.display = 'flex'; div.style.gap = '0.5rem'; div.style.marginBottom = '0.5rem';
-        const pattern = activeLen === '7,15' ? '[0-9]{7,15}' : `[0-9]{${activeLen}}`;
-        const placeholder = activeLen === '7,15' ? 'رقم الهاتف' : 'X'.repeat(activeLen);
         
-    div.innerHTML = `
-        <div class="active-code-display" style="display:none;">${activePrefix}</div>
-        <input type="tel" name="phone[]" class="phone-input" placeholder="${placeholder}" style="direction:ltr; flex:1" required pattern="${pattern}">
-        <button type="button" class="btn" style="background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:0 0.8rem;" onclick="this.parentElement.remove()">×</button>
-    `;
+        div.innerHTML = `
+            <input type="tel" name="phone[]" class="phone-input" placeholder="+967 7XXXXXXXX" style="flex:1" required>
+            <button type="button" class="btn" style="background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:0 0.8rem;" onclick="this.parentElement.remove()">×</button>
+        `;
         container.appendChild(div);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         populateCountryList();
-        updatePhoneValidation();
     });
 </script>
 @endsection
