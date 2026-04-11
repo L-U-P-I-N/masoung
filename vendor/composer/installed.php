@@ -3,7 +3,7 @@
         'name' => 'masoung/tribe-directory',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '3895cf39ef917e6676b4ab4be01d8a8231f43899',
+        'reference' => 'fa75308e805da67f4af755c0475e2c55740bf79b',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -499,7 +499,7 @@
         'masoung/tribe-directory' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '3895cf39ef917e6676b4ab4be01d8a8231f43899',
+            'reference' => 'fa75308e805da67f4af755c0475e2c55740bf79b',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
