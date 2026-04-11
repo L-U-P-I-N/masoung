@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -46,22 +48,24 @@ class AuthController extends Controller
                 'last_session_id' => $sessionId,
             ]);
 
-            // إرسال تنبيه بالبريد الإلكتروني في الخلفية
-            $settings = DB::table('tribe_settings')->first();
-            $notifyEmail = $settings->contact_email ?? 'skjccm@gmail.com';
-            
-            \App\Jobs\SendEmailJob::dispatch(
-                'emails.login_alert',
-                [
+            // إرسال تنبيه بالبريد الإلكتروني مباشرة (بدون queue)
+            try {
+                $settings = DB::table('tribe_settings')->first();
+                $notifyEmail = $settings->contact_email ?? 'skjccm@gmail.com';
+                $alertData = [
                     'tribe_name'  => $settings->tribe_name ?? 'القبيلة',
                     'admin_name'  => $admin->name,
                     'admin_email' => $admin->email,
                     'ip_address'  => $request->ip(),
                     'timestamp'   => now()->format('Y-m-d H:i:s'),
-                ],
-                $notifyEmail,
-                'تنبيه أمان: تسجيل دخول جديد للوحة الإدارة'
-            );
+                ];
+                Mail::send('emails.login_alert', $alertData, function ($message) use ($notifyEmail) {
+                    $message->to($notifyEmail)
+                            ->subject('تنبيه أمان: تسجيل دخول جديد للوحة الإدارة');
+                });
+            } catch (\Exception $e) {
+                Log::error('Login alert email failed: ' . $e->getMessage());
+            }
 
             return redirect()->route('admin.dashboard')->with('success', 'مرحباً بك ' . $admin->name);
         }
@@ -99,13 +103,17 @@ class AuthController extends Controller
             ['code' => $code, 'created_at' => now()]
         );
 
-        // إرسال البريد الإلكتروني في الخلفية
-        \App\Jobs\SendEmailJob::dispatch(
-            'emails.reset_code',
-            ['code' => $code],
-            $request->email,
-            'رمز إعادة تعيين كلمة المرور - قبيلة مسونق'
-        );
+        // إرسال رمز التحقق مباشرة عبر SMTP (بدون queue حتى يصل فوراً)
+        try {
+            $recipientEmail = $request->email;
+            Mail::send('emails.reset_code', ['code' => $code], function ($message) use ($recipientEmail) {
+                $message->to($recipientEmail)
+                        ->subject('رمز إعادة تعيين كلمة المرور - قبيلة مسونق');
+            });
+        } catch (\Exception $e) {
+            Log::error('Reset code email failed: ' . $e->getMessage());
+            return back()->withErrors(['email' => 'فشل إرسال الرمز. يرجى التحقق من البريد الإلكتروني والمحاولة مجدداً.']);
+        }
 
         return redirect()->route('admin.password.reset.verify', ['email' => $request->email])
                        ->with('success', 'تم إرسال رمز التحقق إلى بريدك الإلكتروني');
