@@ -112,7 +112,9 @@ class AuthController extends Controller
             });
         } catch (\Exception $e) {
             Log::error('Reset code email failed: ' . $e->getMessage());
-            return back()->withErrors(['email' => 'فشل إرسال الرمز. يرجى التحقق من البريد الإلكتروني والمحاولة مجدداً.']);
+            // إظهار الخطأ الحقيقي للمساعدة في الـ Debugging (مؤقتاً)
+            $errorMessage = 'فشل إرسال الرمز: ' . $e->getMessage();
+            return back()->withInput()->withErrors(['email' => $errorMessage]);
         }
 
         return redirect()->route('admin.password.reset.verify', ['email' => $request->email])
@@ -122,6 +124,9 @@ class AuthController extends Controller
     public function showVerifyCodePage(Request $request)
     {
         $email = $request->email;
+        if (!$email) {
+            return redirect()->route('admin.password.request')->with('error', 'يرجى إدخال البريد الإلكتروني أولاً');
+        }
         return view('auth.verify_code', compact('email'));
     }
 
