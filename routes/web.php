@@ -70,6 +70,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     Route::put('/members/{id}', [AdminController::class, 'memberUpdate'])->name('members.update');
     Route::delete('/members/{id}', [AdminController::class, 'memberDelete'])->name('members.delete');
     Route::patch('/members/{id}/approve', [AdminController::class, 'memberApprove'])->name('members.approve');
+    Route::delete('/members/{id}/reject', [AdminController::class, 'memberReject'])->name('members.reject');
 
     // الأنشطة
     Route::get('/activities', [AdminController::class, 'activities'])->name('activities');

@@ -187,9 +187,28 @@ class AdminController extends Controller
     public function memberApprove($id)
     {
         if (!$this->hasPermission('manage_members')) abort(403);
-        DB::table('members')->where('id', $id)->update(['is_active' => 1]);
-        $this->logActivity('approved', 'member', $id);
-        return back()->with('success', 'تم تفعيل العضوية بنجاح');
+        $m = DB::table('members')->find($id);
+        DB::table('members')->where('id', $id)->update(['is_active' => 1, 'updated_at' => now()]);
+        $this->logActivity('approved', 'member', $id, ['name' => $m->name ?? '']);
+        return back()->with('success', 'تم قبول طلب العضوية بنجاح');
+    }
+
+    public function memberReject($id)
+    {
+        if (!$this->hasPermission('manage_members')) abort(403);
+        $m = DB::table('members')->find($id);
+        if (!$m) return back()->with('error', 'العضو غير موجود');
+        // حماية: لا يمكن رفض عضو مفعّل بالفعل
+        if ($m->is_active) {
+            return back()->with('error', 'لا يمكن رفض عضو تمت الموافقة عليه مسبقاً');
+        }
+        // حذف الصورة من S3 إن وجدت
+        if ($m->photo) {
+            try { Storage::disk('s3')->delete($m->photo); } catch (\Exception $e) {}
+        }
+        DB::table('members')->where('id', $id)->delete();
+        $this->logActivity('rejected', 'member', $id, ['name' => $m->name ?? '']);
+        return back()->with('success', 'تم رفض طلب العضوية وحذف البيانات');
     }
 
     public function memberApproveBulk(Request $request)
