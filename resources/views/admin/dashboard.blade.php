@@ -22,8 +22,8 @@
     }
 
     .p-stat-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
+        background: var(--dark2);
+        border: 1px solid var(--border);
         border-radius: 1.25rem;
         padding: 1.5rem;
         display: flex;
@@ -32,12 +32,12 @@
         position: relative;
         overflow: hidden;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
     .p-stat-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 10px 30px rgba(201, 168, 76, 0.15);
         border-color: var(--gold);
     }
 
@@ -46,77 +46,91 @@
         position: absolute;
         top: 0;
         right: 0;
-        width: 100px;
-        height: 100px;
-        background: radial-gradient(circle at top right, rgba(201, 168, 76, 0.1), transparent);
+        width: 120px;
+        height: 120px;
+        background: radial-gradient(circle at top right, rgba(201, 168, 76, 0.08), transparent);
         border-radius: 0 1.25rem 0 100%;
+        pointer-events: none;
     }
 
     .p-stat-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 1rem;
+        width: 58px;
+        height: 58px;
+        border-radius: 1.15rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.6rem;
         flex-shrink: 0;
-        transition: transform 0.3s ease;
+        transition: all 0.3s ease;
+        box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.05);
     }
 
     .p-stat-card:hover .p-stat-icon {
         transform: scale(1.1) rotate(-5deg);
+        filter: brightness(1.2);
     }
 
     .p-stat-info {
         flex-grow: 1;
+        z-index: 2;
     }
 
     .p-stat-value {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--text-main);
+        font-size: 2rem;
+        font-weight: 800;
+        color: #fff;
         line-height: 1;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.5px;
     }
 
     .p-stat-label {
-        font-size: 0.875rem;
+        font-size: 0.85rem;
         color: var(--text-muted);
-        font-weight: 500;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     /* Urgent Status */
     .card-urgent {
-        border-color: rgba(239, 68, 68, 0.3);
-        background: linear-gradient(135deg, var(--card-bg) 0%, rgba(239, 68, 68, 0.05) 100%);
+        border-color: rgba(239, 68, 68, 0.4);
+        background: linear-gradient(145deg, var(--dark2) 0%, rgba(239, 68, 68, 0.03) 100%);
     }
-    .card-urgent .p-stat-icon { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+    .card-urgent .p-stat-icon { 
+        background: rgba(239, 68, 68, 0.1) !important; 
+        color: #ff5f5f !important;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+    }
+    .card-urgent .p-stat-value { color: #fca5a5; }
 
     /* Quick Actions */
     .action-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1rem;
+        gap: 1.25rem;
     }
 
     .action-tile {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 1rem;
-        padding: 1.25rem;
+        background: var(--dark2);
+        border: 1px solid var(--border);
+        border-radius: 1.15rem;
+        padding: 1.5rem;
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 1.25rem;
         text-decoration: none;
-        color: var(--text-main);
-        transition: all 0.2s ease;
+        color: #fff;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .action-tile:hover {
-        background: rgba(201, 168, 76, 0.05);
+        background: var(--dark3);
         border-color: var(--gold);
-        transform: translateX(-5px);
+        transform: translateX(-8px);
+        box-shadow: -10px 10px 20px rgba(0, 0, 0, 0.3);
     }
 
     .action-tile i {
