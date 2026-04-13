@@ -473,20 +473,8 @@ class AdminController extends Controller
     // ===== الإعدادات =====
     public function settings()
     {
-        try {
-            $settings = DB::table('tribe_settings')->first();
-            return view('admin.settings', compact('settings'));
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Settings Page Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            if (config('app.debug')) {
-                throw $e;
-            }
-            
-            return "حدث خطأ أثناء تحميل الإعدادات: " . $e->getMessage() . " في الملف " . $e->getFile() . " سطر " . $e->getLine();
-        }
+        $settings = DB::table('tribe_settings')->first();
+        return view('admin.settings', compact('settings'));
     }
 
     public function settingsUpdate(Request $request)

@@ -211,11 +211,11 @@ return [
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
         'mail' => [
-            'to' => env('BACKUP_NOTIFICATION_EMAIL', 'skjccm@gmail.com'),
+            'to' => 'your@example.com',
 
             'from' => [
-                'address' => env('MAIL_FROM_ADDRESS', 'skjccm@gmail.com'),
-                'name' => env('MAIL_FROM_NAME', 'Masoung Backup'),
+                'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
+                'name' => env('MAIL_FROM_NAME', 'Example'),
             ],
         ],
 
