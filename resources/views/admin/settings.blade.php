@@ -48,7 +48,7 @@
             <div class="form-group">
                 <label class="lbl">شعار القبيلة (Logo)</label>
                 <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/svg+xml">
-                @if($settings && $settings->logo)
+                @if(optional($settings)->logo)
                 <div style="margin-top:0.7rem">
                     <img src="{{ Storage::url($settings->logo) }}" class="img-preview" alt="الشعار">
                     <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">الشعار الحالي</p>
@@ -59,7 +59,7 @@
             <div class="form-group">
                 <label class="lbl">صورة الغلاف</label>
                 <input type="file" name="cover_image" accept="image/jpeg,image/png,image/webp">
-                @if($settings && $settings->cover_image)
+                @if(optional($settings)->cover_image)
                 <div style="margin-top:0.7rem">
                     <img src="{{ Storage::url($settings->cover_image) }}" class="img-preview" alt="الغلاف" style="width:200px;height:100px">
                     <p style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem">صورة الغلاف الحالية</p>
@@ -100,13 +100,13 @@
         <div class="form-grid">
             <div class="form-group">
                 <label class="lbl">تاريخ ووقت البدء</label>
-                <input type="datetime-local" name="auto_approve_start" value="{{ old('auto_approve_start', $settings && $settings->auto_approve_start ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_start)) : '') }}">
+                <input type="datetime-local" name="auto_approve_start" value="{{ old('auto_approve_start', optional($settings)->auto_approve_start ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_start)) : '') }}">
                 @error('auto_approve_start')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
             <div class="form-group">
                 <label class="lbl">تاريخ ووقت الانتهاء</label>
-                <input type="datetime-local" name="auto_approve_end" value="{{ old('auto_approve_end', $settings && $settings->auto_approve_end ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_end)) : '') }}">
+                <input type="datetime-local" name="auto_approve_end" value="{{ old('auto_approve_end', optional($settings)->auto_approve_end ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_end)) : '') }}">
                 @error('auto_approve_end')<p class="field-error">{{ $message }}</p>@enderror
             </div>
         </div>
