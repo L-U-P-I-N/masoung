@@ -160,10 +160,30 @@
         .empty i { font-size:3rem;display:block;margin-bottom:1rem;color:var(--border); }
 
         /* MOBILE */
+        .menu-toggle {
+            display:none; background:var(--dark3); border:1px solid var(--border);
+            color:var(--gold); padding:0.5rem 0.7rem; border-radius:8px;
+            cursor:pointer; font-size:1.1rem; transition:all 0.2s;
+            align-items:center; justify-content:center;
+        }
+        .menu-toggle:hover { background:rgba(201,168,76,0.1); }
+
+        .sidebar-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.7); backdrop-filter:blur(3px);
+            z-index:90; display:none; opacity:0; transition:opacity 0.3s;
+        }
+        .sidebar-overlay.active { display:block; opacity:1; }
+
         @media(max-width:900px){
-            .sidebar { transform:translateX(100%); transition:transform 0.3s; }
+            .sidebar { transform:translateX(100%); transition:transform 0.3s; border-left:none; border-right:1px solid var(--border); }
             .sidebar.open { transform:translateX(0); }
             .main { margin-right:0; }
+            .topbar { padding:1rem; gap:1rem; }
+            .menu-toggle { display:flex; }
+            #close-sidebar { display:flex !important; }
+            .stat-grid { grid-template-columns: 1fr; }
+            .content { padding: 1.2rem; }
         }
     </style>
     <?php echo $__env->yieldPushContent('styles'); ?>
@@ -173,10 +193,13 @@
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-head">
         <div class="icon">⚜</div>
-        <div>
+        <div style="flex:1">
             <div class="lbl">قبيلة مسونق</div>
             <div class="sub">لوحة الإدارة</div>
         </div>
+        <button id="close-sidebar" class="menu-toggle" style="display:none; border:none; background:none; font-size:1.4rem; color:var(--text-muted); padding:0;">
+            <i class="fas fa-times"></i>
+        </button>
     </div>
 
     <?php
@@ -223,6 +246,12 @@
         <a href="<?php echo e(route('admin.settings')); ?>" class="<?php echo e(request()->routeIs('admin.settings*') ? 'active' : ''); ?>">
             <i class="fas fa-cog"></i> إعدادات القبيلة
         </a>
+        <form action="<?php echo e(route('admin.backup.run')); ?>" method="POST" id="backup-form" style="margin: 0.5rem 0.5rem 0.15rem;">
+            <?php echo csrf_field(); ?>
+            <button type="submit" class="btn" style="width:100%; justify-content:flex-start; background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid var(--border); padding:0.7rem 1rem; border-radius:10px; font-weight:600; cursor:pointer; gap:0.8rem;">
+                <i class="fas fa-database"></i> عمل نسخة احتياطية
+            </button>
+        </form>
     </nav>
     <?php endif; ?>
     
@@ -249,7 +278,10 @@
 
 <div class="main">
     <div class="topbar">
-        <div>
+        <button id="toggle-sidebar" class="menu-toggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div style="flex:1">
             <h1><?php echo $__env->yieldContent('page-title', 'لوحة التحكم'); ?></h1>
             <div class="breadcrumb"><?php echo $__env->yieldContent('breadcrumb', 'الرئيسية'); ?></div>
         </div>
@@ -269,6 +301,43 @@
         <?php echo $__env->yieldContent('content'); ?>
     </div>
 </div>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const toggleBtn = document.getElementById('toggle-sidebar');
+        const closeBtn = document.getElementById('close-sidebar');
+
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if(toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+        if(closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if(overlay) overlay.addEventListener('click', closeSidebar);
+
+        // Close sidebar on link click (mobile)
+        const navLinks = sidebar.querySelectorAll('nav a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 900) {
+                    closeSidebar();
+                }
+            });
+        });
+    });
+</script>
 
 <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
