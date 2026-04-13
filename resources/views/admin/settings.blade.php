@@ -17,31 +17,31 @@
 
             <div class="form-group">
                 <label class="lbl">اسم القبيلة <span style="color:var(--red)">*</span></label>
-                <input type="text" name="tribe_name" value="{{ old('tribe_name', $settings->tribe_name ?? 'قبيلة مسونق') }}" required>
+                <input type="text" name="tribe_name" value="{{ old('tribe_name', optional($settings)->tribe_name ?? 'قبيلة مسونق') }}" required>
                 @error('tribe_name')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
             <div class="form-group">
                 <label class="lbl">تاريخ التأسيس</label>
-                <input type="date" name="founded_date" value="{{ old('founded_date', $settings->founded_date ?? '') }}">
+                <input type="date" name="founded_date" value="{{ old('founded_date', optional($settings)->founded_date ?? '') }}">
                 @error('founded_date')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
             <div class="form-group">
                 <label class="lbl">الموقع الجغرافي</label>
-                <input type="text" name="location" value="{{ old('location', $settings->location ?? '') }}" placeholder="مثال: المنطقة الشرقية، المملكة العربية السعودية">
+                <input type="text" name="location" value="{{ old('location', optional($settings)->location ?? '') }}" placeholder="مثال: المنطقة الشرقية، المملكة العربية السعودية">
                 @error('location')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
             <div class="form-group">
                 <label class="lbl">البريد الإلكتروني للتواصل</label>
-                <input type="email" name="contact_email" value="{{ old('contact_email', $settings->contact_email ?? '') }}" placeholder="info@tribe.com" style="direction:ltr">
+                <input type="email" name="contact_email" value="{{ old('contact_email', optional($settings)->contact_email ?? '') }}" placeholder="info@tribe.com" style="direction:ltr">
                 @error('contact_email')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
             <div class="form-group">
                 <label class="lbl">رقم الهاتف</label>
-                <input type="tel" name="contact_phone" value="{{ old('contact_phone', $settings->contact_phone ?? '') }}" placeholder="+966500000000" style="direction:ltr">
+                <input type="tel" name="contact_phone" value="{{ old('contact_phone', optional($settings)->contact_phone ?? '') }}" placeholder="+966500000000" style="direction:ltr">
                 @error('contact_phone')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
@@ -69,19 +69,20 @@
 
             <div class="form-group full">
                 <label class="lbl">وصف القبيلة</label>
-                <textarea name="tribe_description" style="min-height:150px" placeholder="وصف مختصر عن القبيلة يظهر في الصفحة الرئيسية وصفحة عن القبيلة...">{{ old('tribe_description', $settings->tribe_description ?? '') }}</textarea>
+                <textarea name="tribe_description" style="min-height:150px" placeholder="وصف مختصر عن القبيلة يظهر في الصفحة الرئيسية وصفحة عن القبيلة...">{{ old('tribe_description', optional($settings)->tribe_description ?? '') }}</textarea>
                 @error('tribe_description')<p class="field-error">{{ $message }}</p>@enderror
             </div>
+        </div> {{-- End of form-grid --}}
 
-        <div class="form-grid">
+        <div class="form-grid" style="margin-top:1.2rem; border-top:1px solid rgba(201,168,76,0.1); padding-top:1.2rem;">
             <div class="form-group">
                 <label class="lbl">تكرار النسخ الاحتياطي التلقائي</label>
                 <select name="backup_frequency">
-                    <option value="daily" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'daily' ? 'selected' : '' }}>يومياً</option>
-                    <option value="weekly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'weekly' ? 'selected' : '' }}>أسبوعياً</option>
-                    <option value="monthly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'monthly' ? 'selected' : '' }}>شهرياً (مرة في الشهر)</option>
-                    <option value="yearly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'yearly' ? 'selected' : '' }}>سنوياً</option>
-                    <option value="none" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'none' ? 'selected' : '' }}>إيقاف النسخ التلقائي</option>
+                    <option value="daily" {{ old('backup_frequency', optional($settings)->backup_frequency ?? 'monthly') == 'daily' ? 'selected' : '' }}>يومياً</option>
+                    <option value="weekly" {{ old('backup_frequency', optional($settings)->backup_frequency ?? 'monthly') == 'weekly' ? 'selected' : '' }}>أسبوعياً</option>
+                    <option value="monthly" {{ old('backup_frequency', optional($settings)->backup_frequency ?? 'monthly') == 'monthly' ? 'selected' : '' }}>شهرياً (مرة في الشهر)</option>
+                    <option value="yearly" {{ old('backup_frequency', optional($settings)->backup_frequency ?? 'monthly') == 'yearly' ? 'selected' : '' }}>سنوياً</option>
+                    <option value="none" {{ old('backup_frequency', optional($settings)->backup_frequency ?? 'monthly') == 'none' ? 'selected' : '' }}>إيقاف النسخ التلقائي</option>
                 </select>
                 @error('backup_frequency')<p class="field-error">{{ $message }}</p>@enderror
             </div>
