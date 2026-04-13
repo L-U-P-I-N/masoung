@@ -73,9 +73,46 @@
                 @error('tribe_description')<p class="field-error">{{ $message }}</p>@enderror
             </div>
 
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="lbl">تكرار النسخ الاحتياطي التلقائي</label>
+                <select name="backup_frequency">
+                    <option value="daily" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'daily' ? 'selected' : '' }}>يومياً</option>
+                    <option value="weekly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'weekly' ? 'selected' : '' }}>أسبوعياً</option>
+                    <option value="monthly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'monthly' ? 'selected' : '' }}>شهرياً (مرة في الشهر)</option>
+                    <option value="yearly" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'yearly' ? 'selected' : '' }}>سنوياً</option>
+                    <option value="none" {{ old('backup_frequency', $settings->backup_frequency ?? 'monthly') == 'none' ? 'selected' : '' }}>إيقاف النسخ التلقائي</option>
+                </select>
+                @error('backup_frequency')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
         </div>
+    </div>
 
-        <div style="border-top:1px solid var(--border);margin-top:1.5rem;padding-top:1.5rem">
+    <div class="form-card" style="margin-top:1.5rem">
+        <h2 style="margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border);color:var(--gold)">
+            <i class="fas fa-magic" style="margin-left:0.5rem"></i> إعدادات الموافقة التلقائية
+        </h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem">
+            يمكنك تحديد فترة زمنية يتم فيها قبول أي عضو جديد يسجل في الموقع تلقائياً دون الحاجة لموافقة يدوية.
+        </p>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="lbl">تاريخ ووقت البدء</label>
+                <input type="datetime-local" name="auto_approve_start" value="{{ old('auto_approve_start', $settings && $settings->auto_approve_start ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_start)) : '') }}">
+                @error('auto_approve_start')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="form-group">
+                <label class="lbl">تاريخ ووقت الانتهاء</label>
+                <input type="datetime-local" name="auto_approve_end" value="{{ old('auto_approve_end', $settings && $settings->auto_approve_end ? date('Y-m-d\TH:i', strtotime($settings->auto_approve_end)) : '') }}">
+                @error('auto_approve_end')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card" style="margin-top:1.5rem">
+        <div style="padding:0.5rem 0">
             <button type="submit" class="btn btn-primary" style="padding:0.75rem 2rem;font-size:0.95rem">
                 <i class="fas fa-save"></i> حفظ الإعدادات
             </button>

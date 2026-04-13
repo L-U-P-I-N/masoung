@@ -11,9 +11,29 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule($schedule): void
     {
-        // $schedule->command('inspire')->hourly();
-        $schedule->command('backup:clean')->twiceMonthly(1, 15, '01:00');
-        $schedule->command('backup:run')->twiceMonthly(1, 15, '02:00');
+        $settings = \Illuminate\Support\Facades\DB::table('tribe_settings')->first();
+        $frequency = $settings->backup_frequency ?? 'monthly';
+
+        if ($frequency !== 'none') {
+            $task = $schedule->command('backup:run')->onOneServer();
+
+            switch ($frequency) {
+                case 'daily':
+                    $task->dailyAt('02:00');
+                    break;
+                case 'weekly':
+                    $task->weeklyOn(1, '02:00');
+                    break;
+                case 'monthly':
+                    $task->monthlyOn(1, '02:00');
+                    break;
+                case 'yearly':
+                    $task->yearlyOn(1, 1, '02:00');
+                    break;
+            }
+
+            $schedule->command('backup:clean')->dailyAt('01:00')->onOneServer();
+        }
     }
 
     /**

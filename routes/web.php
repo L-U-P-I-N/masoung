@@ -15,6 +15,7 @@ Route::get('/activities', [PublicController::class, 'activities'])->name('activi
 Route::get('/activities/{id}', [PublicController::class, 'activityShow'])->name('activities.show');
 Route::get('/news', [PublicController::class, 'news'])->name('news');
 Route::get('/news/{id}', [PublicController::class, 'newsShow'])->name('news.show');
+Route::get('/download-image', [PublicController::class, 'downloadImage'])->name('download.image');
 
 // ===== مسار الادمن السري (بدون زر في الواجهة) =====
 Route::get('/admin-access', [AuthController::class, 'showLogin'])->name('admin.login');
@@ -24,6 +25,7 @@ Route::post('/admin-logout', [AuthController::class, 'logout'])->name('admin.log
 // مسارات تسجيل الأعضاء (عامة)
 Route::get('/register-member', [MemberRegistrationController::class, 'show'])->name('member.register');
 Route::post('/register-member', [MemberRegistrationController::class, 'store'])->name('member.register.post')->middleware('throttle:registration');
+Route::get('/approve-member/{id}', [AdminController::class, 'approveViaEmail'])->name('admin.members.approve.signed')->middleware('signed');
 
 Route::get('/run-migration', function () {
     \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
@@ -91,6 +93,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin.auth')->group(function
     // الإعدادات
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
     Route::put('/settings', [AdminController::class, 'settingsUpdate'])->name('settings.update');
+    Route::post('/backup/run', [AdminController::class, 'runBackup'])->name('backup.run');
     Route::get('/change-password', [AdminController::class, 'passwordEdit'])->name('password.edit');
     Route::put('/change-password', [AdminController::class, 'passwordUpdate'])->name('password.update');
 });

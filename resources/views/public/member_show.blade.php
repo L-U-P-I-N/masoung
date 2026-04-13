@@ -4,9 +4,34 @@
 
 @section('content')
 
+@push('styles')
+<style>
+    /* Lightbox Styles */
+    .lightbox {
+        position: fixed; inset: 0; z-index: 3000;
+        background: rgba(13,17,23,0.95);
+        display: none; align-items: center; justify-content: center;
+        opacity: 0; transition: opacity 0.3s;
+    }
+    .lightbox.open { display: flex; opacity: 1; }
+    .lightbox-content {
+        position: relative; max-width: 90%; max-height: 85%;
+        display: flex; flex-direction: column; align-items: center;
+    }
+    .lightbox-img {
+        max-width: 100%; max-height: 80vh; border-radius: 10px;
+        box-shadow: 0 0 40px rgba(0,0,0,0.5); object-fit: contain;
+    }
+    .lightbox-close {
+        position: absolute; top: -50px; left: 0;
+        color: white; font-size: 1.5rem; cursor: pointer;
+    }
+</style>
+@endpush
+
 <div class="page-header" style="padding: 100px 2rem 40px;">
     <div style="text-align: center;">
-        <div style="width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 2rem; overflow: hidden; border: 4px solid var(--gold); box-shadow: 0 10px 30px rgba(201,168,76,0.3); background: var(--dark3);">
+        <div style="width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 2rem; overflow: hidden; border: 4px solid var(--gold); box-shadow: 0 10px 30px rgba(201,168,76,0.3); background: var(--dark3); cursor: zoom-in;" onclick="openLightbox()">
             @if($member->photo)
                 <img src="{{ Storage::url($member->photo) }}" alt="{{ $member->name }}" style="width:100%;height:100%;object-fit:cover">
             @else
@@ -23,7 +48,6 @@
             </span>
             @endif
         </div>
-
     </div>
 </div>
 
@@ -93,6 +117,14 @@
     </div>
 </section>
 
+<!-- Lightbox Modal -->
+<div id="lightbox" class="lightbox">
+    <div class="lightbox-content">
+        <button class="lightbox-close" onclick="closeLightbox()"><i class="fas fa-times"></i></button>
+        <img id="lightboxImg" class="lightbox-img" src="{{ $member->photo ? Storage::url($member->photo) : '' }}" alt="Full view">
+    </div>
+</div>
+
 <style>
 .btn {
     display: inline-flex;
@@ -144,5 +176,30 @@
     }
 }
 </style>
+
+@push('scripts')
+<script>
+    const lb = document.getElementById('lightbox');
+
+    function openLightbox() {
+        @if($member->photo)
+            lb.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        @endif
+    }
+
+    function closeLightbox() {
+        lb.classList.remove('open');
+        document.body.style.overflow = 'auto';
+    }
+
+    lb.addEventListener('click', (e) => {
+        if(e.target === lb) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape') closeLightbox();
+    });
+</script>
+@endpush
 
 @endsection

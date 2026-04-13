@@ -121,4 +121,20 @@ class PublicController extends Controller
         
         return view('public.news_show', compact('settings', 'item'));
     }
+    public function downloadImage(Request $request)
+    {
+        $path = $request->get('path');
+        if (!$path) abort(404);
+
+        // Security check: only allow paths in 'news/', 'activities/', or 'members/'
+        if (!preg_match('/^(news|activities|members)\//', $path)) {
+            abort(403);
+        }
+
+        if (!\Illuminate\Support\Facades\Storage::disk('s3')->exists($path)) {
+            abort(404);
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('s3')->download($path);
+    }
 }

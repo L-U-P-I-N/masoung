@@ -480,14 +480,17 @@ class AdminController extends Controller
     public function settingsUpdate(Request $request)
     {
         $data = $request->validate([
-            'tribe_name'        => 'required|string|max:255',
-            'tribe_description' => 'nullable|string',
-            'founded_date'      => 'nullable|date',
-            'location'           => 'nullable|string|max:255',
-            'contact_email'     => 'nullable|email|max:255',
-            'contact_phone'     => 'nullable|string|max:255',
-            'logo'              => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
-            'cover_image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'tribe_name'          => 'required|string|max:255',
+            'tribe_description'   => 'nullable|string',
+            'founded_date'        => 'nullable|date',
+            'location'            => 'nullable|string|max:255',
+            'contact_email'       => 'nullable|email|max:255',
+            'contact_phone'       => 'nullable|string|max:255',
+            'logo'                => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:2048',
+            'cover_image'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'auto_approve_start'  => 'nullable|date',
+            'auto_approve_end'    => 'nullable|date|after_or_equal:auto_approve_start',
+            'backup_frequency'    => 'required|string|in:daily,weekly,monthly,yearly,none',
         ]);
 
         $settings = DB::table('tribe_settings')->first();
@@ -501,6 +504,10 @@ class AdminController extends Controller
             $data['cover_image'] = $request->file('cover_image')->store('settings', 's3');
         }
 
+        // Handle unsetting dates if they are empty
+        if (!$request->filled('auto_approve_start')) $data['auto_approve_start'] = null;
+        if (!$request->filled('auto_approve_end')) $data['auto_approve_end'] = null;
+
         if ($settings) {
             DB::table('tribe_settings')->where('id', $settings->id)->update($data);
         } else {
@@ -508,6 +515,41 @@ class AdminController extends Controller
         }
 
         return redirect()->route('admin.settings')->with('success', 'تم تحديث الإعدادات بنجاح');
+    }
+
+    public function runBackup()
+    {
+        if (!$this->isSuperAdmin()) abort(403);
+
+        try {
+            // we use --only-db if you only want database, but user said "backup files and data" usually.
+            // Spatie backup:run covers both by default.
+            \Illuminate\Support\Facades\Artisan::call('backup:run');
+            $this->logActivity('backup', 'system', null, ['status' => 'success']);
+            return back()->with('success', 'تم بدء عملية النسخ الاحتياطي بنجاح. قد تستغرق العملية عدة دقائق وفقاً لحجم البيانات.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'فشلت عملية النسخ الاحتياطي: ' . $e->getMessage());
+        }
+    }
+
+    public function approveViaEmail(Request $request, $id)
+    {
+        if (!$request->hasValidSignature()) {
+            abort(401, 'الرابط غير صالح أو انتهت صلاحيته.');
+        }
+
+        $member = DB::table('members')->find($id);
+        if (!$member) {
+            return "هذا العضو غير موجود في قاعدة البيانات.";
+        }
+
+        if ($member->is_active) {
+            return "تم تفعيل هذا العضو مسبقاً.";
+        }
+
+        DB::table('members')->where('id', $id)->update(['is_active' => 1, 'updated_at' => now()]);
+
+        return "تم تفعيل العضو ({$member->name}) بنجاح عبر البريد الإلكتروني.";
     }
 
     public function passwordEdit()

@@ -7,8 +7,11 @@ use Illuminate\Support\Facades\DB;
 
 class MemberRegistrationController extends Controller
 {
-    public function show()
+    public function show(Request $request)
     {
+        if ($request->hasCookie('member_registered')) {
+            return redirect()->route('home')->with('info', 'لقد قمت بتسجيل بياناتك مسبقاً.');
+        }
         return view('members.register');
     }
 
@@ -71,14 +74,38 @@ class MemberRegistrationController extends Controller
             $data['photo'] = $request->file('photo')->store('members', 's3');
         }
 
-        // Members registered through the public form are INACTIVE by default (Pending Approval)
-        $data['is_active']  = 0;
+        // Auto-approval logic
+        $settings = DB::table('tribe_settings')->first();
+        $isAutoApproved = false;
+        if ($settings && $settings->auto_approve_start && $settings->auto_approve_end) {
+            $now = now();
+            if ($now->between($settings->auto_approve_start, $settings->auto_approve_end)) {
+                $isAutoApproved = true;
+            }
+        }
+
+        $data['is_active']  = $isAutoApproved ? 1 : 0;
         $data['sort_order'] = 0;
         $data['created_at'] = now();
         $data['updated_at'] = now();
 
-        DB::table('members')->insert($data);
+        $memberId = DB::table('members')->insertGetId($data);
+        $member = DB::table('members')->find($memberId);
 
-        return redirect()->route('home')->with('success', 'تم إرسال بياناتك بنجاح. سيتم مراجعتها من قبل الإدارة وتفعيلها قريباً.');
+        // Send Notification to Admin
+        try {
+            $adminEmail = $settings->contact_email ?? 'skjccm@gmail.com';
+            \Illuminate\Support\Facades\Mail::to($adminEmail)->send(new \App\Mail\NewMemberNotification($member));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send member notification: ' . $e->getMessage());
+        }
+
+        $msg = $isAutoApproved 
+            ? 'تم قبول عضويتك تلقائياً وتفعيلها بنجاح!' 
+            : 'تم إرسال بياناتك بنجاح. سيتم مراجعتها من قبل الإدارة وتفعيلها قريباً.';
+
+        return redirect()->route('home')
+            ->with('success', $msg)
+            ->cookie('member_registered', $data['name'], 525600); // 1 year cookie
     }
 }
