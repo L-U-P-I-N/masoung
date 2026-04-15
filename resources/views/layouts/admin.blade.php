@@ -25,15 +25,22 @@
             --sidebar-w:260px;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:'Cairo',sans-serif; background:var(--dark); color:var(--text); min-height:100vh; display:flex; }
+        body { font-family:'Cairo',sans-serif; background:var(--dark); color:var(--text); min-height:100vh; display:flex; position: relative; overflow-x: hidden; }
 
         /* SIDEBAR */
         .sidebar {
             width:var(--sidebar-w); background:var(--dark2);
             border-left:1px solid var(--border);
             position:fixed; top:0; right:0; bottom:0;
-            display:flex; flex-direction:column; overflow-y:auto; z-index:100;
+            display:flex; flex-direction:column; overflow-y:auto; z-index:1000;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            z-index: 999; display: none; opacity: 0; transition: opacity 0.3s;
+        }
+        .sidebar-overlay.active { display: block; opacity: 1; }
         .sidebar-head {
             padding:1.5rem; border-bottom:1px solid var(--border);
             display:flex; align-items:center; gap:0.8rem;
@@ -78,11 +85,17 @@
             padding:1rem 2rem; display:flex; align-items:center; justify-content:space-between;
             position:sticky; top:0; z-index:50;
         }
-        .topbar h1 { font-size:1.2rem; font-weight:700; }
-        .topbar .breadcrumb { font-size:0.8rem; color:var(--text-muted); margin-top:0.15rem; }
+        .topbar h1 { font-size:1.1rem; font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar .breadcrumb { font-size:0.75rem; color:var(--text-muted); margin-top:0.1rem; }
         .topbar-actions { display:flex; gap:0.7rem; }
 
-        .content { padding:2rem; flex:1; }
+        .menu-btn {
+            display: none; background: rgba(201,168,76,0.1); border: 1px solid var(--border);
+            color: var(--gold); width: 38px; height: 38px; border-radius: 8px;
+            align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer;
+        }
+
+        .content { padding:1.5rem; flex:1; width: 100%; max-width: 1400px; margin: 0 auto; }
 
         /* ALERTS */
         .alert {
@@ -110,7 +123,8 @@
         .table-wrap { background:var(--dark2); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
         .table-head { padding:1.2rem 1.5rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.8rem; }
         .table-head h2 { font-size:1rem; font-weight:700; }
-        table { width:100%; border-collapse:collapse; }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width:100%; border-collapse:collapse; min-width: 500px; }
         th { padding:0.8rem 1.2rem; background:var(--dark3); font-size:0.78rem; font-weight:700; color:var(--text-muted); text-align:right; letter-spacing:0.5px; white-space:nowrap; }
         td { padding:1rem 1.2rem; border-top:1px solid rgba(201,168,76,0.08); font-size:0.88rem; vertical-align:middle; }
         tr:hover td { background:rgba(201,168,76,0.03); }
@@ -160,46 +174,30 @@
         .empty i { font-size:3rem;display:block;margin-bottom:1rem;color:var(--border); }
 
         /* MOBILE */
-        .menu-toggle {
-            display:none; background:var(--dark3); border:1px solid var(--border);
-            color:var(--gold); padding:0.5rem 0.7rem; border-radius:8px;
-            cursor:pointer; font-size:1.1rem; transition:all 0.2s;
-            align-items:center; justify-content:center;
-        }
-        .menu-toggle:hover { background:rgba(201,168,76,0.1); }
-
-        .sidebar-overlay {
-            position:fixed; top:0; left:0; right:0; bottom:0;
-            background:rgba(0,0,0,0.7); backdrop-filter:blur(3px);
-            z-index:90; display:none; opacity:0; transition:opacity 0.3s;
-        }
-        .sidebar-overlay.active { display:block; opacity:1; }
-
         @media(max-width:900px){
-            .sidebar { transform:translateX(100%); transition:transform 0.3s; border-left:none; border-right:1px solid var(--border); }
-            .sidebar.open { transform:translateX(0); }
-            .main { margin-right:0; }
-            .topbar { padding:1rem; gap:1rem; }
-            .menu-toggle { display:flex; }
-            #close-sidebar { display:flex !important; }
+            .sidebar { transform:translateX(100%); }
+            .sidebar.active { transform:translateX(0); }
+            .main { margin-right:0; width: 100%; }
+            .topbar { padding: 0.8rem 1.2rem; }
+            .menu-btn { display: flex; }
+            .content { padding: 1rem; }
             .stat-grid { grid-template-columns: 1fr; }
-            .content { padding: 1.2rem; }
+            .form-grid { grid-template-columns: 1fr; }
         }
     </style>
     @stack('styles')
 </head>
 <body>
 
+<div class="sidebar-overlay" id="overlay"></div>
+
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-head">
         <div class="icon">⚜</div>
-        <div style="flex:1">
+        <div>
             <div class="lbl">قبيلة مسونق</div>
             <div class="sub">لوحة الإدارة</div>
         </div>
-        <button id="close-sidebar" class="menu-toggle" style="display:none; border:none; background:none; font-size:1.4rem; color:var(--text-muted); padding:0;">
-            <i class="fas fa-times"></i>
-        </button>
     </div>
 
     @php
@@ -246,12 +244,6 @@
         <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings*') ? 'active' : '' }}">
             <i class="fas fa-cog"></i> إعدادات القبيلة
         </a>
-        <form action="{{ route('admin.backup.run') }}" method="POST" id="backup-form" style="margin: 0.5rem 0.5rem 0.15rem;">
-            @csrf
-            <button type="submit" class="btn" style="width:100%; justify-content:flex-start; background:rgba(201,168,76,0.1); color:var(--gold); border:1px solid var(--border); padding:0.7rem 1rem; border-radius:10px; font-weight:600; cursor:pointer; gap:0.8rem;">
-                <i class="fas fa-database"></i> عمل نسخة احتياطية
-            </button>
-        </form>
     </nav>
     @endif
     
@@ -278,12 +270,14 @@
 
 <div class="main">
     <div class="topbar">
-        <button id="toggle-sidebar" class="menu-toggle">
-            <i class="fas fa-bars"></i>
-        </button>
-        <div style="flex:1">
-            <h1>@yield('page-title', 'لوحة التحكم')</h1>
-            <div class="breadcrumb">@yield('breadcrumb', 'الرئيسية')</div>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <button class="menu-btn" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div>
+                <h1>@yield('page-title', 'لوحة التحكم')</h1>
+                <div class="breadcrumb">@yield('breadcrumb', 'الرئيسية')</div>
+            </div>
         </div>
         <div class="topbar-actions">
             @yield('topbar-actions')
@@ -302,43 +296,27 @@
     </div>
 </div>
 
-<div class="sidebar-overlay" id="sidebar-overlay"></div>
-
+@stack('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        const toggleBtn = document.getElementById('toggle-sidebar');
-        const closeBtn = document.getElementById('close-sidebar');
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
 
-        function openSidebar() {
-            sidebar.classList.add('open');
+    if(menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.add('active');
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
-        }
+        });
+    }
 
-        function closeSidebar() {
-            sidebar.classList.remove('open');
+    if(overlay) {
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
             overlay.classList.remove('active');
             document.body.style.overflow = '';
-        }
-
-        if(toggleBtn) toggleBtn.addEventListener('click', openSidebar);
-        if(closeBtn) closeBtn.addEventListener('click', closeSidebar);
-        if(overlay) overlay.addEventListener('click', closeSidebar);
-
-        // Close sidebar on link click (mobile)
-        const navLinks = sidebar.querySelectorAll('nav a');
-        navLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth <= 900) {
-                    closeSidebar();
-                }
-            });
         });
-    });
+    }
 </script>
-
-@stack('scripts')
 </body>
 </html>
