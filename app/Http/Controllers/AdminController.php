@@ -522,13 +522,17 @@ class AdminController extends Controller
         if (!$this->isSuperAdmin()) abort(403);
 
         try {
-            // we use --only-db if you only want database, but user said "backup files and data" usually.
-            // Spatie backup:run covers both by default.
-            \Illuminate\Support\Facades\Artisan::call('backup:run');
-            $this->logActivity('backup', 'system', null, ['status' => 'success']);
-            return back()->with('success', 'تم بدء عملية النسخ الاحتياطي بنجاح. قد تستغرق العملية عدة دقائق وفقاً لحجم البيانات.');
+            $exitCode = \Illuminate\Support\Facades\Artisan::call('backup:run');
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            
+            if ($exitCode === 0) {
+                $this->logActivity('backup', 'system', null, ['status' => 'success']);
+                return back()->with('success', 'تم بدء عملية النسخ الاحتياطي بنجاح. ' . $output);
+            } else {
+                return back()->with('error', 'فشلت عملية النسخ الاحتياطي: ' . $output);
+            }
         } catch (\Exception $e) {
-            return back()->with('error', 'فشلت عملية النسخ الاحتياطي: ' . $e->getMessage());
+            return back()->with('error', 'فشلت عملية النسخ الاحتياطي بشكل غير متوقع: ' . $e->getMessage());
         }
     }
 
